@@ -21,3 +21,7 @@
 [submodule "lora_gateway"]
 	path = lora_gateway
 	url = https://github.com/glmoritz/lora_gateway.git
+[submodule "contiki-ng-labscim-tsch"]
+	path = contiki-ng-labscim-tsch
+	url = https://github.com/glmoritz/contiki-ng.git
+	branch = labscim-tsch-sim

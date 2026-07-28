@@ -39,7 +39,7 @@ INI_DIR="$ROOT/inis/tsch"
 
 check_env
 [ -x "$FW_TSCH" ] || die "TSCH firmware not built: $FW_TSCH
-  build it with: cd $ROOT/contiki-ng/examples/6tisch/simple-node && make -j\$(nproc) TARGET=labscim"
+  build it with: cd $ROOT/contiki-ng-labscim-tsch/examples/6tisch/simple-node && make -j\$(nproc) TARGET=labscim"
 
 mkdir -p "$OUT"
 

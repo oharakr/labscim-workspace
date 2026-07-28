@@ -63,7 +63,7 @@ FW_GW="$ROOT/packet_forwarder/lora_pkt_fwd/lora_pkt_fwd"
 [ -x "$FW_GW" ] || die "packet forwarder not built: $FW_GW"
 if [ "$CONFIG" = "LoRaWANvsTSCH" ]; then
     [ -x "$FW_TSCH" ] || die "TSCH firmware not built: $FW_TSCH
-  build it with: cd $ROOT/contiki-ng/examples/6tisch/simple-node && make -j\$(nproc) TARGET=labscim"
+  build it with: cd $ROOT/contiki-ng-labscim-tsch/examples/6tisch/simple-node && make -j\$(nproc) TARGET=labscim"
 fi
 
 docker ps --format '{{.Names}}' 2>/dev/null | grep -q chirpstack || die \

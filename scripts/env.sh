@@ -5,7 +5,18 @@
 # long as the directory layout is respected:
 #
 #     <root>/models/labscim/     <- the OMNeT++ model (submodule)
-#     <root>/contiki-ng/         <- TSCH firmware
+#     <root>/contiki-ng/         <- current Contiki-NG: the model compiles its shared
+#                                   sources (labscim_socket, shared_mutex, the setup
+#                                   struct) straight out of this tree through symlinks
+#     <root>/contiki-ng-labscim-tsch/  <- the TSCH firmware the campaign runs, pinned to
+#                                   an older commit. It has to be a second checkout: the
+#                                   model needs fields (request_downstream,
+#                                   packet_generation_rate_s) that the pinned
+#                                   contiki_node_setup struct does not have, so the model
+#                                   cannot be built against it. They interoperate because
+#                                   the new fields were appended at the end of the struct,
+#                                   so the older firmware reads the prefix it knows and
+#                                   ignores the tail.
 #     <root>/LoRaMac-node/       <- LoRa end-device firmware
 #     <root>/lora_gateway/       <- LoRa gateway
 #     <root>/packet_forwarder/
@@ -42,7 +53,7 @@ fi
 INET_ROOT="${INET_ROOT:-$ROOT/inet}"
 MODEL_DIR="$ROOT/models/labscim"
 NIC_DIR="$MODEL_DIR/simulations/wireless/nic"
-FW_TSCH="$ROOT/contiki-ng/examples/6tisch/simple-node/node.labscim"
+FW_TSCH="$ROOT/contiki-ng-labscim-tsch/examples/6tisch/simple-node/node.labscim"
 NETWORK="tsch.simulations.wireless.nic.LabSCimLoRaWANvsTSCH"
 NEDPATH="../..:../../../src:$INET_ROOT/src:$INET_ROOT/examples:$INET_ROOT/tutorials:$INET_ROOT/showcases"
 
