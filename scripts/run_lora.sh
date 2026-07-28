@@ -61,6 +61,22 @@ FW_LORA="$ROOT/LoRaMac-node/build/src/apps/LoRaMac/LoRaMac-periodic-uplink-lpp"
 FW_GW="$ROOT/packet_forwarder/lora_pkt_fwd/lora_pkt_fwd"
 [ -x "$FW_LORA" ] || die "LoRa end-device firmware not built: $FW_LORA"
 [ -x "$FW_GW" ] || die "packet forwarder not built: $FW_GW"
+
+# packet_forwarder commits its build artifacts, so a fresh clone already contains a
+# lora_pkt_fwd binary -- an old one, whose shared-memory handshake no longer matches the
+# model. It starts fine and then never completes the rendezvous: the simulation sits at
+# "Initializing..." forever with one idle gateway process and no nodes at all. Catch it
+# here rather than let it burn an afternoon.
+if git -C "$ROOT/packet_forwarder" rev-parse --git-dir >/dev/null 2>&1; then
+    if git -C "$ROOT/packet_forwarder" show HEAD:lora_pkt_fwd/lora_pkt_fwd 2>/dev/null \
+       | cmp -s - "$FW_GW"; then
+        die "the packet forwarder is the prebuilt binary committed in the repository, not a
+  local build, and it will hang the simulation at startup. Build it:
+      cd $ROOT/lora_gateway && make -j\$(nproc)
+      cd $ROOT/packet_forwarder && make -j\$(nproc)
+  (lora_gateway first: the packet forwarder links against its libloragw)"
+    fi
+fi
 if [ "$CONFIG" = "LoRaWANvsTSCH" ]; then
     [ -x "$FW_TSCH" ] || die "TSCH firmware not built: $FW_TSCH
   build it with: cd $ROOT/contiki-ng-labscim-tsch/examples/6tisch/simple-node && make -j\$(nproc) TARGET=labscim"
@@ -101,6 +117,19 @@ echo "  cost      : ~2h20 per run, serialised by the real-time scheduler"
 echo
 
 cleanup() { pkill -9 -f -- "-p$PORT" 2>/dev/null; }
+
+# Clear the OTAA join nonces before every run. ChirpStack records used DevNonces in
+# device_keys and rejects repeats, which is correct replay protection -- but the firmware
+# restarts from a fresh state each run and reuses them, so from the second run onwards
+# every join is refused. The failure is silent from the outside: gateways come online, no
+# device ever does. The shipped database also carries nonces from earlier campaigns, so
+# even the first run on a fresh clone hits this.
+flush_nonces() {
+    docker exec -i labscim-chirpstack-docker-postgres-1 psql -U chirpstack -d chirpstack \
+        -c "update device_keys set dev_nonces = '{\"0000000000000000\": []}'::jsonb,
+                                   join_nonce = 0;" >/dev/null 2>&1 \
+        || echo "WARNING: could not flush DevNonces -- joins may be rejected as replays" >&2
+}
 trap 'cleanup; echo "### INTERRUPTED $(date -Is)" >> "$LOG"; exit 130' INT TERM
 
 # Firmware paths deliberately are NOT overridden here: they come from the .ini files, so
@@ -131,7 +160,7 @@ for r in $REPS; do
             continue
         fi
         echo "=========== N=$N rep $r $(date -Is) ===========" >> "$LOG"
-        cleanup; sleep 2
+        cleanup; flush_nonces; sleep 2
         t0=$(date +%s)
         ( cd "$NIC_DIR" && "$MODEL_BIN" -r "$r" -m -u Cmdenv -c "$CONFIG" \
             --network="$NETWORK" -n "$NEDPATH" --image-path="$INET_ROOT/images" \

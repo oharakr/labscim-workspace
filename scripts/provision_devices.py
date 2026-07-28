@@ -199,6 +199,9 @@ def status():
     demo = psql(f"select count(*) from device_keys where nwk_key='\\x{DEMO_KEY}'::bytea;")
     print(f"devices: {n_dev}   device_keys: {n_keys}   distinct keys: {n_distinct}"
           f"   on the demo key: {demo}")
+    adr = psql("select distinct adr_algorithm_id from device_profile;")
+    print(f"device profile ADR: {adr or '(none)'}"
+          f"{'   <- stock max-SNR handler (LoRaOnly)' if adr == 'default' else ''}")
     print("users (hash format -- i=1 cannot log in on ChirpStack >= 4.19):")
     print(psql("select email, split_part(password_hash,'$',3) from \"user\" order by email;",
                tuples_only=False))
