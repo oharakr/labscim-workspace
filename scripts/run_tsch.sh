@@ -102,7 +102,6 @@ run_worker() {
             "--*.radioMedium.sameTransmissionStartTimeCheck=\"ignore\"" \
             "--*.*.mobility.boundaryPolygonX=[]" \
             "--*.*.mobility.boundaryPolygonY=[]" \
-            "--*.contikinghost[*].wlan[*].mac.NodeProcessCommand=\"$FW_TSCH\"" \
             "$INI_DIR/labscim-tsch-$N.ini" ) >> "$log" 2>&1
         rc=$?; t1=$(date +%s)
         done_n=$(( done_n + 1 )); [ $rc -ne 0 ] && failed=$(( failed + 1 ))
