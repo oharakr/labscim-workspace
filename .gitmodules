@@ -14,7 +14,7 @@
 [submodule "contiki-ng"]
 	path = contiki-ng
 	url = https://github.com/glmoritz/contiki-ng.git
-	branch = labscim-tsch-sim
+	branch = develop
 [submodule "packet_forwarder"]
 	path = packet_forwarder
 	url = https://github.com/glmoritz/packet_forwarder.git
