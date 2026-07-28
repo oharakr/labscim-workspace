@@ -24,6 +24,7 @@ Usage:
   provision_devices.py --fix-admin                 # make admin/admin work again
   provision_devices.py --fix-user someone --password secret
   provision_devices.py --demo-keys                 # restore the shared key (original behaviour)
+  provision_devices.py --adr labscimadr            # switch the profile to the modified ADR
 """
 import argparse
 import base64
@@ -161,6 +162,26 @@ def password_hash(password, iterations=10000):
     return f"$pbkdf2-sha512$i={iterations}${ab64(salt)}${ab64(dk)}"
 
 
+def set_adr(algorithm, dry_run):
+    """Point the device profile at an ADR algorithm.
+
+    This is the ONLY difference between the LoRaOnly and LoRaOnlyADR scenarios: their .ini
+    files differ by a single line, the configuration name. Everything that makes an ADR run
+    an ADR run lives here, so getting it wrong yields a complete campaign that silently
+    reproduces the other curve.
+
+    "default" is ChirpStack's stock max-SNR handler (LoRaOnly); "labscimadr" is the
+    mean-SNR variant loaded from adr_labscim.js (LoRaOnlyADR).
+    """
+    current = psql("select distinct adr_algorithm_id from device_profile;")
+    print(f"  device profile ADR: {current or '(none)'} -> {algorithm}")
+    if algorithm == "labscimadr":
+        print("  reminder: the plugin only loads if chirpstack.toml lists it under "
+              "adr_plugins, and the chirpstack service was restarted afterwards.")
+    if not dry_run:
+        psql(f"update device_profile set adr_algorithm_id='{algorithm}', updated_at=now();")
+
+
 def fix_user(email, password, dry_run):
     h = password_hash(password)
     print(f"  {email}: password '{password}' -> {h[:32]}...")
@@ -195,17 +216,24 @@ def main():
     ap.add_argument("--fix-admin", action="store_true", help="make admin/admin work again")
     ap.add_argument("--fix-user", metavar="EMAIL", help="rewrite another user's hash")
     ap.add_argument("--password", default="admin", help="password for --fix-user")
+    ap.add_argument("--adr", choices=["default", "labscimadr"],
+                    help="point the device profile at an ADR algorithm: 'default' is "
+                         "ChirpStack's stock max-SNR handler (LoRaOnly), 'labscimadr' the "
+                         "mean-SNR plugin (LoRaOnlyADR)")
     ap.add_argument("--status", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    if not any([args.nodes, args.demo_keys, args.fix_admin, args.fix_user, args.status]):
+    if not any([args.nodes, args.demo_keys, args.fix_admin, args.fix_user, args.status,
+                args.adr]):
         ap.error("nothing to do -- use --status, --nodes, --fix-admin, ...")
 
     if args.status:
         status()
         return
 
+    if args.adr:
+        set_adr(args.adr, args.dry_run)
     if args.fix_admin:
         fix_user("admin", "admin", args.dry_run)
     if args.fix_user:
