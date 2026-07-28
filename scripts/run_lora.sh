@@ -107,6 +107,28 @@ fi
 mkdir -p "$OUT"
 LOG="$OUT/run.log"; STATUS="$OUT/STATUS.txt"
 
+# The MQTT responder echoes every uplink back to its device. Without it nothing is ever
+# delivered end to end: LoRaUpstreamPacketLatency is only emitted when the echo returns,
+# and that signal's count is the numerator of the PDR. A campaign run without it completes
+# normally, exits 0, and reports PDR = 0 for every point.
+REPLY="$MODEL_DIR/PythonScripts/application_reply.py"
+[ -f "$REPLY" ] || die "MQTT responder not found: $REPLY"
+python3 -c 'import paho.mqtt.client, psycopg2' 2>/dev/null || die \
+    "the MQTT responder needs paho-mqtt and psycopg2:
+      pip install paho-mqtt psycopg2-binary"
+
+REPLY_PID=""
+start_reply() {
+    pkill -f 'application_reply\.py' 2>/dev/null
+    sleep 1
+    python3 -u "$REPLY" > "$OUT/application_reply.log" 2>&1 &
+    REPLY_PID=$!
+    sleep 3
+    kill -0 "$REPLY_PID" 2>/dev/null || die \
+        "the MQTT responder died on startup -- see $OUT/application_reply.log"
+}
+stop_reply() { [ -n "$REPLY_PID" ] && kill "$REPLY_PID" 2>/dev/null; }
+
 echo "$CONFIG campaign"
 echo "  model     : $MODEL_BIN"
 echo "  end-device: $FW_LORA"
@@ -130,7 +152,11 @@ flush_nonces() {
                                    join_nonce = 0;" >/dev/null 2>&1 \
         || echo "WARNING: could not flush DevNonces -- joins may be rejected as replays" >&2
 }
-trap 'cleanup; echo "### INTERRUPTED $(date -Is)" >> "$LOG"; exit 130' INT TERM
+trap 'cleanup; stop_reply; echo "### INTERRUPTED $(date -Is)" >> "$LOG"; exit 130' INT TERM
+
+start_reply
+echo "  MQTT reply: running (pid $REPLY_PID), log in $OUT/application_reply.log"
+echo
 
 # Firmware paths deliberately are NOT overridden here: they come from the .ini files, so
 # that launching from the OMNeT++ IDE runs exactly what these scripts run. Only settings
@@ -178,7 +204,7 @@ for r in $REPS; do
     done
 done
 
-cleanup
+cleanup; stop_reply
 echo "### FINISHED $(date -Is) (failed: $failed)" >> "$LOG"
 echo
 echo "campaign finished. Build the curve with:"
