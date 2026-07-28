@@ -1,0 +1,23 @@
+[submodule "inet"]
+	path = inet
+	url = https://github.com/oharakr/inet.git
+	branch = labscim-4.7.0
+[submodule "labscim"]
+	path = labscim
+	url = https://github.com/glmoritz/labscim.git
+[submodule "LoRaMac-node"]
+	path = LoRaMac-node
+	url = https://github.com/glmoritz/LoRaMac-node.git
+[submodule "labscim-chirpstack-docker"]
+	path = labscim-chirpstack-docker
+	url = https://github.com/glmoritz/labscim-chirpstack-docker.git
+[submodule "contiki-ng"]
+	path = contiki-ng
+	url = https://github.com/glmoritz/contiki-ng.git
+	branch = labscim-tsch-sim
+[submodule "packet_forwarder"]
+	path = packet_forwarder
+	url = https://github.com/glmoritz/packet_forwarder.git
+[submodule "lora_gateway"]
+	path = lora_gateway
+	url = https://github.com/glmoritz/lora_gateway.git
