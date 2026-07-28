@@ -3,7 +3,7 @@
 	url = https://github.com/oharakr/inet.git
 	branch = labscim-4.7.0
 [submodule "labscim"]
-	path = labscim
+	path = models/labscim
 	url = https://github.com/glmoritz/labscim.git
 [submodule "LoRaMac-node"]
 	path = LoRaMac-node
