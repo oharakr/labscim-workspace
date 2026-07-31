@@ -7,6 +7,8 @@
 #   -r "LIST"   repetitions        (default: 0..7)
 #   -p PORT     TCP port           (default: 9800)
 #   -o DIR      output directory   (default: <root>/results/<config>)
+#   -V          no vector recording -- ~1.8 GB per run saved, .sca unchanged
+#   -x "OPT"    extra --key=value passed to the model, repeatable
 #   -h          this help
 #
 # Not parallel, unlike run_tsch.sh, and that is not an oversight. All three configurations
@@ -27,20 +29,23 @@
 #   1. ChirpStack running:  cd <root>/labscim-chirpstack-docker && docker compose up -d
 #   2. Devices provisioned for the largest N:
 #                           python3 scripts/provision_devices.py --nodes <N>
-#   3. An MQTT responder echoing uplinks, so end-to-end latency gets stamped.
+#   3. Nothing to start by hand for MQTT: the responder is launched below. Delivery is
+#      stamped by the gateway path, not by it -- see the comment where it starts.
 #   4. For LoRaOnlyADR only: the modified ADR plugin installed server-side (see below).
 
 source "$(dirname "$(readlink -f "$0")")/env.sh"
 
-CONFIG="LoRaOnly"; NS=""; REPS=""; PORT=9800; OUT=""
-while getopts "c:n:r:p:o:h" opt; do
+CONFIG="LoRaOnly"; NS=""; REPS=""; PORT=9800; OUT=""; NOVEC=""; EXTRA=()
+while getopts "c:n:r:p:o:x:Vh" opt; do
     case $opt in
         c) CONFIG=$OPTARG ;;
         n) NS=$OPTARG ;;
         r) REPS=$OPTARG ;;
         p) PORT=$OPTARG ;;
         o) OUT=$OPTARG ;;
-        h) sed -n '2,30p' "$0"; exit 0 ;;
+        V) NOVEC=1 ;;
+        x) EXTRA+=("$OPTARG") ;;
+        h) sed -n '2,/^[^#]/p' "$0" | sed '$d'; exit 0 ;;
         *) exit 2 ;;
     esac
 done
@@ -90,11 +95,26 @@ docker ps --format '{{.Names}}' 2>/dev/null | grep -q chirpstack || die \
 # adr_plugins entry in chirpstack.toml, and the device profile pointing at it. Without that
 # the run completes happily and produces the LoRaOnly curve under an ADR label, which is
 # the kind of result nobody notices until it is in a figure.
-if [ "$CONFIG" = "LoRaOnlyADR" ]; then
+#
+# The mirror mistake is just as damaging and just as quiet: leaving the plugin selected
+# while running LoRaOnly labels the modified-ADR curve as the stock one. Both directions
+# are checked.
+if [ "$CONFIG" = "LoRaOnly" ] || [ "$CONFIG" = "LoRaOnlyADR" ]; then
     alg=$(docker exec -i labscim-chirpstack-docker-postgres-1 psql -U chirpstack \
               -d chirpstack -tAc "select adr_algorithm_id from device_profile limit 1;" \
               2>/dev/null | tr -d '[:space:]')
-    [ -n "$alg" ] && [ "$alg" != "default" ] || die \
+    [ -n "$alg" ] || die "could not read adr_algorithm_id from the device profile -- is the
+  postgres container up?  docker compose ps"
+fi
+if [ "$CONFIG" = "LoRaOnly" ] && [ "$alg" != "default" ]; then
+    die "the device profile uses ADR algorithm '$alg', not the stock 'default', so this run
+  would produce the modified-ADR curve under the LoRaOnly label. Switch it back first:
+    docker exec -i labscim-chirpstack-docker-postgres-1 psql -U chirpstack -d chirpstack \\
+        -c \"update device_profile set adr_algorithm_id = 'default';\"
+    cd $ROOT/labscim-chirpstack-docker && docker compose restart chirpstack"
+fi
+if [ "$CONFIG" = "LoRaOnlyADR" ]; then
+    [ "$alg" != "default" ] || die \
 "the device profile uses ADR algorithm '${alg:-unknown}', so this would reproduce the
   LoRaOnly curve with an ADR label. Install the modified ADR server-side first:
     1. copy adr_labscim.js into labscim-chirpstack-docker/configuration/chirpstack/
@@ -107,10 +127,16 @@ fi
 mkdir -p "$OUT"
 LOG="$OUT/run.log"; STATUS="$OUT/STATUS.txt"
 
-# The MQTT responder echoes every uplink back to its device. Without it nothing is ever
-# delivered end to end: LoRaUpstreamPacketLatency is only emitted when the echo returns,
-# and that signal's count is the numerator of the PDR. A campaign run without it completes
-# normally, exits 0, and reports PDR = 0 for every point.
+# The MQTT responder subscribes to the uplink events and logs them. It can also echo each
+# uplink back to its device, but that is off (SEND_LORA_DOWNSTREAM_REPLY = False) because the
+# reference setup has no application downlink at all. It is kept running because its log is
+# an uplink count independent of the model's own counters -- useful when a run looks wrong.
+#
+# Delivery is NOT stamped here. LoRaUpstreamPacketLatency comes from the gateway path:
+# lora_pkt_fwd subscribes to the ChirpStack uplink event, computes latency and AoI, and feeds
+# LoRaPacketReceived back into the simulator. That subscription is driven by
+# MQTTLoggerApplicationTopic in the .ini -- if it stops matching what the server publishes,
+# the campaign completes normally, exits 0, and reports PDR = 0 for every point.
 REPLY="$MODEL_DIR/PythonScripts/application_reply.py"
 [ -f "$REPLY" ] || die "MQTT responder not found: $REPLY"
 python3 -c 'import paho.mqtt.client, psycopg2' 2>/dev/null || die \
@@ -169,6 +195,18 @@ OVERRIDES=(
     "--*.*.mobility.boundaryPolygonX=[]"
     "--*.*.mobility.boundaryPolygonY=[]"
 )
+
+# -V: drop vector recording. Each run writes ~1.8 GB of .vec against ~13 MB of .sca, and the
+# curve is built from the .sca alone -- a full campaign is otherwise bounded by disk rather
+# than by the clock. Recording is a pure output setting: it consumes no random numbers and
+# does not touch the model, so a -V run and a normal run with the same seed produce identical
+# scalars. Off by default, because dropping the vectors is irreversible after the fact.
+[ -n "$NOVEC" ] && OVERRIDES+=( "--**.vector-recording=false" )
+
+# -x: extra --key=value overrides, repeatable, appended last so they win. For one-off runs
+# that are not campaign points -- a short run with the spectrum recorder on, say -- without
+# editing the .ini files the campaign is defined by.
+[ ${#EXTRA[@]} -gt 0 ] && OVERRIDES+=( "${EXTRA[@]}" )
 
 total=0; done_n=0; failed=0; start=$(date +%s)
 for r in $REPS; do for N in $NS; do total=$(( total + 1 )); done; done

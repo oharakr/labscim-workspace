@@ -7,6 +7,8 @@
 #   -r "LIST"   repetitions        (default: 0..7 everywhere, 0..20 for N >= 140)
 #   -p PORT     base TCP port      (default: 9700; worker k uses PORT + 10*k)
 #   -o DIR      output directory   (default: <root>/results/tsch)
+#   -V          no vector recording -- saves a lot of disk, .sca unchanged
+#   -x "OPT"    extra --key=value passed to the model, repeatable
 #   -h          this help
 #
 # Why more repetitions at high N: the analysis drops runs whose generated-packets-per-node
@@ -17,15 +19,17 @@
 
 source "$(dirname "$(readlink -f "$0")")/env.sh"
 
-WORKERS=""; NS=""; REPS_LOW=""; REPS_HIGH=""; BASE_PORT=9700; OUT=""
-while getopts "w:n:r:p:o:h" opt; do
+WORKERS=""; NS=""; REPS_LOW=""; REPS_HIGH=""; BASE_PORT=9700; OUT=""; NOVEC=""; EXTRA=()
+while getopts "w:n:r:p:o:x:Vh" opt; do
     case $opt in
         w) WORKERS=$OPTARG ;;
         n) NS=$OPTARG ;;
         r) REPS_LOW=$OPTARG; REPS_HIGH=$OPTARG ;;
         p) BASE_PORT=$OPTARG ;;
         o) OUT=$OPTARG ;;
-        h) sed -n '2,20p' "$0"; exit 0 ;;
+        V) NOVEC=1 ;;
+        x) EXTRA+=("$OPTARG") ;;
+        h) sed -n '2,/^[^#]/p' "$0" | sed '$d'; exit 0 ;;
         *) exit 2 ;;
     esac
 done
@@ -42,6 +46,13 @@ check_env
   build it with: cd $ROOT/contiki-ng-labscim-tsch/examples/6tisch/simple-node && make -j\$(nproc) TARGET=labscim"
 
 mkdir -p "$OUT"
+
+# -V drops the vectors, which the curve does not use; -x appends one-off overrides last, so
+# they win over the .ini. Same flags as run_lora.sh, and the reason they exist here too is the
+# spectrum recorder: a figure needs a short run with it on, which is not a campaign point.
+OVERRIDES=()
+[ -n "$NOVEC" ] && OVERRIDES+=( "--**.vector-recording=false" )
+[ ${#EXTRA[@]} -gt 0 ] && OVERRIDES+=( "${EXTRA[@]}" )
 
 # Job list, repetition-major: an interrupted campaign still leaves a complete curve at
 # fewer repetitions rather than a few node counts at full depth.
@@ -102,6 +113,7 @@ run_worker() {
             "--*.radioMedium.sameTransmissionStartTimeCheck=\"ignore\"" \
             "--*.*.mobility.boundaryPolygonX=[]" \
             "--*.*.mobility.boundaryPolygonY=[]" \
+            "${OVERRIDES[@]}" \
             "$INI_DIR/labscim-tsch-$N.ini" ) >> "$log" 2>&1
         rc=$?; t1=$(date +%s)
         done_n=$(( done_n + 1 )); [ $rc -ne 0 ] && failed=$(( failed + 1 ))
