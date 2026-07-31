@@ -44,11 +44,49 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # for a connection that never arrives. It hangs at "Initializing..." instead of failing.
 export LABSCIM_WORKSPACE_ROOT="$ROOT"
 
+# OMNeT++ is the one dependency that is not a submodule, so it can be anywhere. It is
+# searched for in four stages, stopping at the first hit, cheapest and most authoritative
+# first:
+#
+#   path   opp_run on $PATH. This is what `source omnetpp-6.x/setenv` leaves behind, so it
+#          honours the installation the user actually activated -- if two are installed,
+#          the activated one wins over anything found by scanning the disk.
+#   glob   the conventional locations: next to the workspace, in $HOME, one level below
+#          $HOME, and /opt.
+#   index  the locate database. Cheap and finds installs in unconventional places, but it
+#          cannot be the only mechanism: the index is rebuilt on a daily timer, so an
+#          OMNeT++ extracted this morning is invisible to it, and plenty of systems
+#          (containers, fresh installs, macOS) have no plocate at all.
+#   find   a bounded walk of $HOME. Slow, but it has no prerequisites and sees an install
+#          the moment it exists, which is exactly the first-time-reproducer case that the
+#          index misses.
+#
+# Within each stage candidates are sorted by version, descending, so a machine carrying
+# both 6.1 and 6.4.0 picks 6.4.0.
+# An OMNETPP_ROOT set by the caller is never second-guessed, even when it is wrong: silently
+# searching past a typo would run the campaign against a different OMNeT++ than the one that
+# was asked for. check_env reports it instead.
 OMNETPP_ROOT="${OMNETPP_ROOT:-}"
 if [ -z "$OMNETPP_ROOT" ]; then
-    for cand in "$ROOT"/../omnetpp-* "$HOME"/omnetpp-* /opt/omnetpp-*; do
-        [ -x "$cand/bin/opp_run" ] && OMNETPP_ROOT="$cand" && break
+    for _stage in path glob index find; do
+        case $_stage in
+            path)  _cands=$(command -v opp_run 2>/dev/null | sed 's|/bin/opp_run$||') ;;
+            glob)  _cands=$(ls -d "$ROOT"/../omnetpp-* "$HOME"/omnetpp-* "$HOME"/*/omnetpp-* \
+                                  /opt/omnetpp-* 2>/dev/null) ;;
+            index) _cands=$( { plocate -r '/bin/opp_run$' 2>/dev/null \
+                               || locate -r '/bin/opp_run$' 2>/dev/null; } \
+                             | sed 's|/bin/opp_run$||') ;;
+            find)  _cands=$(find "$HOME" -maxdepth 4 -type d -name 'omnetpp-*' 2>/dev/null) ;;
+        esac
+        # read, rather than a for over $_cands, so a path containing spaces survives.
+        while IFS= read -r _cand; do
+            [ -n "$_cand" ] && [ -x "$_cand/bin/opp_run" ] || continue
+            OMNETPP_ROOT="$_cand"
+            break
+        done <<< "$(printf '%s\n' "$_cands" | sort -Vr)"
+        [ -n "$OMNETPP_ROOT" ] && break
     done
+    unset _stage _cands _cand
 fi
 INET_ROOT="${INET_ROOT:-$ROOT/inet}"
 MODEL_DIR="$ROOT/models/labscim"
@@ -70,7 +108,8 @@ die() { echo "ABORTED: $*" >&2; exit 1; }
 
 check_env() {
     [ -n "$OMNETPP_ROOT" ] && [ -x "$OMNETPP_ROOT/bin/opp_run" ] || die \
-        "OMNeT++ not found. Export OMNETPP_ROOT=/path/to/omnetpp-6.x"
+        "OMNeT++ not found. Searched \$PATH, $ROOT/.., \$HOME, \$HOME/*, /opt, the locate
+  index, and \$HOME to depth 4. Export OMNETPP_ROOT=/path/to/omnetpp-6.x"
     [ -d "$MODEL_DIR" ] || die "model missing at $MODEL_DIR -- run git submodule update --init"
     [ -n "$MODEL_BIN" ] && [ -x "$MODEL_BIN" ] || die \
         "model binary not found under $MODEL_DIR/out -- build the model first"
