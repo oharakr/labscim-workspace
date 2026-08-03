@@ -18,7 +18,7 @@
 #
 # The plotter does not read the .sca/.vec results. It reads two text logs written by the
 # LabscimRadioRecorder module (models/labscim/src/physicallayer/LabscimRadioRecorder.cc),
-# enabled in every .ini under inis/:
+# configured in every .ini under inis/ but switched off there by default:
 #
 #   LogName          one line per radio signal -- radio mode, reception state, transmission
 #                    state, transmission/reception ended, packetSentToUpper. Drives both
@@ -31,17 +31,21 @@
 # The recorder writes relative to the model's working directory, which is the .ned directory
 # and not the result directory, so the .ini paths are built from ${resultdir}.
 #
-# A full campaign point (8400 s, 200 nodes) writes on the order of 150 MB of usage log. To
-# turn the recorder off for a run without editing the .ini files:
+# The .ini files ship with the recorder off, because a full campaign point (8400 s, 200 nodes)
+# writes on the order of 150 MB of usage log, and a TSCH point writes far more. Turn it on for
+# one short run, without editing the .ini files:
 #
-#   scripts/run_lora.sh ... -x "--*.spectrumrecorder.EnableLog=false"
+#   scripts/run_lora.sh ... -x "--sim-time-limit=300s" \
+#                           -x "--*.spectrumrecorder.EnableLog=true"
 #
-# Two versions of spectrum_plotter.py are in the tree, both from github.com/glmoritz/labscim
-# at different commits. models/labscim is at the current head, where commit 047ae3b
-# ("Updated simulation files and spectrum plotter") dropped the power colour map and left the
-# plotter taking a single argument. labscim-chirpstack-docker pins the same repo at an older
-# commit that still reads the power log and draws it. This uses the older one, because the
-# power map is the point.
+# This runs spectrum_plotter_new.py, not spectrum_plotter.py. The original is upstream's and is
+# left exactly as it is, so a figure made before this work can still be reproduced byte for byte;
+# everything added here -- the power colour map that commit 047ae3b dropped, the -b and -t
+# arguments, and a channel grid chosen from the scenario -- lives in the new file beside it.
+#
+# A third copy sits at labscim-chirpstack-docker/labscim: the same upstream repo pinned as a
+# nested submodule at an older commit. It is not maintained here, and a submodule at a stale pin
+# is not somewhere changes can be committed.
 
 set -u
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
@@ -58,7 +62,7 @@ while getopts "d:f:o:b:t:h" opt; do
     esac
 done
 
-PLOTTER="$ROOT/labscim-chirpstack-docker/labscim/src/spectrum_plotter/spectrum_plotter.py"
+PLOTTER="$ROOT/models/labscim/src/spectrum_plotter/spectrum_plotter_new.py"
 [ -s "$PLOTTER" ] || { echo "plotter not found: $PLOTTER" >&2; exit 1; }
 
 if [ -z "$USAGE" ]; then
