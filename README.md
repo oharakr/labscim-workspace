@@ -96,7 +96,7 @@ cd contiki-ng-labscim-tsch/examples/6tisch/simple-node && make -j$(nproc) TARGET
 
 # LoRa gateway and packet forwarder. Do not skip these because the binaries appear to be
 # there already: packet_forwarder commits its build artifacts, and the binary the clone
-# hands you is a 2021 build. It runs, so nothing complains, but its shared-memory handshake
+# hands you is a stale build. It runs, so nothing complains, but its shared-memory handshake
 # no longer matches the model -- the simulation then stops at "Initializing..." with a
 # single lora_pkt_fwd process idle at 0% CPU and never spawns the remaining nodes.
 # lora_gateway first: the packet forwarder links against its libloragw.
