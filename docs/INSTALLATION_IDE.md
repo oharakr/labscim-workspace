@@ -176,8 +176,11 @@ picking a file, the ini is not a workspace resource: go back to Step 8.
 ### Additional arguments
 
 The campaign `.ini` files do not run on their own — `scripts/run_tsch.sh` supplies four
-arguments alongside them, and an IDE run needs the same ones. Paste this into **Additional
-arguments** on the Main tab:
+arguments alongside them, and an IDE run needs the same ones.
+
+The field is hidden: scroll to the bottom of the Main tab and click **`More >>`**. That
+reveals an **Advanced** group whose last field is **Additional arguments** (below *Dynamic
+libraries*, *NED path*, *Exclude NED packages* and *Image path*). Paste this there:
 
 ```
 --network=tsch.simulations.wireless.nic.LabSCimLoRaWANvsTSCH --*.radioMedium.sameTransmissionStartTimeCheck="ignore" --*.*.mobility.boundaryPolygonX=[] --*.*.mobility.boundaryPolygonY=[]
