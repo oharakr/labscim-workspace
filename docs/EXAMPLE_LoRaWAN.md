@@ -18,26 +18,24 @@ carried by a real packet forwarder to a real ChirpStack over MQTT. Requires the
 > since they would register the same DevEUIs on one server.
 
 ### 1. Start ChirpStack
-On a fresh clone, delete the placeholder files first — see below for why:
-
 ```bash
-cd $LABSCIM_WORKSPACE_ROOT/labscim-chirpstack-docker
-find postgresqldata -name .gitkeep -delete
-docker compose up -d
-docker compose ps          # seven containers
+cd $LABSCIM_WORKSPACE_ROOT
+./scripts/chirpstack_up.sh        # seven containers; -d stops them again
 ```
 
-Skip that and `postgres-1` exits at startup with
+Use the script rather than `docker compose up -d` directly. On a fresh clone the bare
+command leaves `postgres-1` exiting at startup with
 
 ```
 FATAL: could not open directory "pg_tblspc/.gitkeep/PG_14_202107181": Not a directory
 ```
 
-The repository ships an already-provisioned PostgreSQL data directory. Git cannot store an
-empty directory, so ten `.gitkeep` files stand in for the ones PostgreSQL expects to find
-empty — and PostgreSQL treats *every* entry under `pg_tblspc/` as a tablespace link and tries
-to open it as a directory. Deleting them is safe: the directories themselves survive, which
-is all PostgreSQL needs. Do it again after any fresh clone.
+The submodule ships an already-provisioned PostgreSQL data directory, so the scenarios start
+with the devices registered instead of needing an `initdb`. Git cannot store an empty
+directory, so ten `.gitkeep` placeholders hold the ones PostgreSQL wants empty — and
+PostgreSQL treats *every* entry under `pg_tblspc/` as a tablespace link and opens it as a
+directory. The script creates those ten directories and clears the placeholders before
+starting the stack. It is idempotent, so running it again costs nothing.
 
 ### 2. Provision the devices
 ```bash
