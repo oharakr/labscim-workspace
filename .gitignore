@@ -12,3 +12,7 @@ __pycache__/
 # that go in the paper live with the paper, not here.
 /figures/
 *.png
+
+# ...except the screenshots the guides in docs/ embed. Without this exception the pattern
+# above swallows them and the guides render with broken images on GitHub.
+!/docs/images/*.png
