@@ -137,7 +137,9 @@ LoRaWAN, necessarily serial (the real-time scheduler pins one simulated second t
 wall-clock second, so each run costs 2 h 20 min regardless of the machine):
 
 ```bash
-cd labscim-chirpstack-docker && docker compose up -d && cd ..
+cd labscim-chirpstack-docker
+find postgresqldata -name .gitkeep -delete   # fresh clone only: postgres refuses to start otherwise
+docker compose up -d && cd ..
 ./scripts/run_lora.sh -c LoRaOnly
 ./scripts/run_lora.sh -c LoRaOnlyADR
 ```

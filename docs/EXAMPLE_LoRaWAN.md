@@ -18,10 +18,26 @@ carried by a real packet forwarder to a real ChirpStack over MQTT. Requires the
 > since they would register the same DevEUIs on one server.
 
 ### 1. Start ChirpStack
+On a fresh clone, delete the placeholder files first — see below for why:
+
 ```bash
-cd $LABSCIM_WORKSPACE_ROOT/labscim-chirpstack-docker && docker compose up -d
+cd $LABSCIM_WORKSPACE_ROOT/labscim-chirpstack-docker
+find postgresqldata -name .gitkeep -delete
+docker compose up -d
 docker compose ps          # seven containers
 ```
+
+Skip that and `postgres-1` exits at startup with
+
+```
+FATAL: could not open directory "pg_tblspc/.gitkeep/PG_14_202107181": Not a directory
+```
+
+The repository ships an already-provisioned PostgreSQL data directory. Git cannot store an
+empty directory, so ten `.gitkeep` files stand in for the ones PostgreSQL expects to find
+empty — and PostgreSQL treats *every* entry under `pg_tblspc/` as a tablespace link and tries
+to open it as a directory. Deleting them is safe: the directories themselves survive, which
+is all PostgreSQL needs. Do it again after any fresh clone.
 
 ### 2. Provision the devices
 ```bash

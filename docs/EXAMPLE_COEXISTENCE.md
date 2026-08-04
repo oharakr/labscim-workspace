@@ -30,7 +30,9 @@ The LoRa components come from Step 7 of the [installation guide](INSTALLATION.md
 
 ### 3. Start ChirpStack and provision
 ```bash
-cd $LABSCIM_WORKSPACE_ROOT/labscim-chirpstack-docker && docker compose up -d
+cd $LABSCIM_WORKSPACE_ROOT/labscim-chirpstack-docker
+find postgresqldata -name .gitkeep -delete   # fresh clone only, see EXAMPLE_LoRaWAN.md
+docker compose up -d
 cd $LABSCIM_WORKSPACE_ROOT
 python3 scripts/provision_devices.py --nodes 200
 ```
