@@ -86,6 +86,12 @@ resolve INET's NED types.
 cd $HOME/omnetpp-6.4.0 && source setenv && omnetpp
 ```
 
+`The OMNeT++ IDE is not installed!` means the distribution you unpacked does not ship it.
+The IDE is prebuilt and shipped as `$OMNETPP_ROOT/ide/`; it is not produced by `./configure`
+and `make`, so no amount of rebuilding will create it. Only the full
+`omnetpp-6.4.0-linux-x86_64.tgz` contains it — the `-core` and source distributions do not.
+Check with `ls $OMNETPP_ROOT/ide`, and if it is missing, unpack the full tarball.
+
 Choose a workspace directory when prompted. Any location works — it holds IDE metadata, not
 your sources, so keep it outside the cloned workspace.
 
@@ -109,25 +115,10 @@ Confirm in **Project Explorer** that both `inet` and `labscim` appear, and that
 `opp_makemake` resolve `inet.common.INETDefs`; without it the build fails exactly as the
 command-line build does without `-KINET_PROJ`.
 
-## Step 8: Set the Workspace Environment Variable
-This is the step that is easy to skip and produces the most confusing symptom.
-
-**Run → Run Configurations… → (your configuration) → Environment → New**
-
-```
-LABSCIM_WORKSPACE_ROOT = /home/<user>/labscim-workspace
-```
-
-The `.ini` files locate the firmware binaries through this variable, and the model spawns
-them with `popen()`, so `/bin/sh` expands it. Without it the path collapses to
-`/contiki-ng/...`; `popen()` still succeeds, the command does not, and **the simulation hangs
-at `Initializing...` with no error at all.**
-
-Note the deliberate absence of braces in the `.ini` files: `${...}` is OMNeT++'s
-iteration-variable syntax and would be consumed before reaching the shell.
-
-## Step 9: Create a Run Configuration
-**Run → Run Configurations… → OMNeT++ Simulation → New**, then set:
+## Step 8: Create a Run Configuration
+**Run → Run Configurations…**, select **OMNeT++ Simulation** in the list on the left, then
+click **New Configuration** (the icon above the list). Give it a name and fill the **Main**
+tab:
 
 | Field | Value |
 |---|---|
@@ -155,11 +146,42 @@ The `.ini` files under `inis/` carry the firmware paths, so an IDE run executes 
 `models/labscim/simulations/wireless/nic/labscim.ini` is the one to use for the smaller
 tutorial examples.
 
+### The Environment tab
+
+Still in the same dialog, switch to the **Environment** tab — the configuration has three:
+*Main*, *Environment*, *Common*. Click **New…** and add:
+
+| Name | Value |
+|---|---|
+| `LABSCIM_WORKSPACE_ROOT` | `/home/<user>/labscim-workspace` |
+
+Leave the radio button on **Append environment to native environment**.
+
+This is the step that is easy to skip and produces the most confusing symptom. The `.ini`
+files locate the firmware binaries through this variable, and the model spawns them with
+`popen()`, so `/bin/sh` expands it. Without it the path collapses to `/contiki-ng/...`;
+`popen()` still succeeds, the command does not, and **the simulation hangs at
+`Initializing...` with no error at all.**
+
+Note the deliberate absence of braces in the `.ini` files: `${...}` is OMNeT++'s
+iteration-variable syntax and would be consumed before reaching the shell.
+
+Alternatively, export it in the terminal *before* launching the IDE in Step 6:
+
+```bash
+export LABSCIM_WORKSPACE_ROOT=$HOME/labscim-workspace
+```
+
+Simulations are launched as child processes of the IDE, so they inherit it — one export
+covers every run configuration. The drawback is that it is invisible: start the IDE from a
+desktop icon instead of that terminal and every run breaks, with the same silent hang. Prefer
+the Environment tab, which travels with the configuration.
+
 For the LoRaWAN configurations the IDE does **not** run the runner's preflight checks, so
 start ChirpStack, provision the devices, launch the MQTT responder and flush the DevNonces
 yourself — see [EXAMPLE_LoRaWAN.md](EXAMPLE_LoRaWAN.md).
 
-## Step 10: Debug the Model
+## Step 9: Debug the Model
 Click **Debug** with the `_dbg` executable selected. When asked how to debug, choose
 **OMNeT++ Simulation**, not *Local C/C++ Application* — the latter launches the binary
 without the ini file, config name and NED path:
@@ -174,7 +196,7 @@ real problem rather than an annoyance: they run on `cRealTimeScheduler` with
 not the wall clock, and the firmware processes and ChirpStack keep running. Long pauses
 desynchronise the run.
 
-## Step 11: Debug the Firmware
+## Step 10: Debug the Firmware
 The firmware runs as **separate processes**, spawned by the model through `popen()`, so the
 IDE debugger attached to the model does not see them. The model provides a hook for this:
 
