@@ -115,31 +115,43 @@ Confirm in **Project Explorer** that both `inet` and `labscim` appear, and that
 `opp_makemake` resolve `inet.common.INETDefs`; without it the build fails exactly as the
 command-line build does without `-KINET_PROJ`.
 
-## Step 8: Create a Run Configuration
+## Step 8: Make the Campaign `.ini` Files Visible to the IDE
+Do this **before** creating a run configuration, or the next step cannot be completed.
+
+The IDE only ever works with files inside imported projects: its file dialogs do not browse
+the filesystem, and internally the ini path is resolved to an Eclipse workspace resource
+(`OmnetppMainTab.java:695`). The campaign files live in `inis/` at the workspace root,
+outside both projects, so the picker will not offer them — it shows only
+`/labscim/simulations/...`.
+
+Bring them inside the project with a symlink:
+
+```bash
+ln -s ../../inis "$LABSCIM_WORKSPACE_ROOT/models/labscim/inis"
+```
+
+Then select the `labscim` project and press **F5** to refresh. They now appear as
+`/labscim/inis/tsch/...`. The symlink is local and untracked; leave it out of any commit to
+the model repository.
+
+## Step 9: Create a Run Configuration
 **Run → Run Configurations…**, select **OMNeT++ Simulation** in the list on the left, then
 click **New Configuration** (the icon above the list). Give it a name and fill the **Main**
-tab:
+tab **in this order**:
 
-| Field | Value |
-|---|---|
-| Executable | the `labscim` project binary (`labscim_dbg` for debugging) |
-| Ini file | e.g. `$LABSCIM_WORKSPACE_ROOT/inis/tsch/labscim-tsch-20.ini` |
-| Config name | `TSCHOnly` (or `LoRaOnly`, `LoRaOnlyADR`, `LoRaWANvsTSCH`) |
-| User interface | `Qtenv` to watch it, `Cmdenv` to just get results |
+| # | Field | Value |
+|---|---|---|
+| 1 | Executable | the `labscim` project binary (`labscim_dbg` for debugging) |
+| 2 | Ini file | **Browse…** → `/labscim/inis/tsch/labscim-tsch-20.ini` |
+| 3 | Config name | `TSCHOnly` (or `LoRaOnly`, `LoRaOnlyADR`, `LoRaWANvsTSCH`) |
+| 4 | User interface | `Qtenv` to watch it, `Cmdenv` to just get results |
 
 ![Select ini file and config](images/run_sim_3.png "Select Ini file and Config")
 
-> **The ini picker only lists files inside imported projects.** The campaign files live in
-> `inis/` at the workspace root, outside both projects, so the dialog will not offer them —
-> it shows only `/labscim/simulations/...`. Make them visible with a symlink inside the
-> project:
->
-> ```bash
-> ln -s "$LABSCIM_WORKSPACE_ROOT/inis" "$LABSCIM_WORKSPACE_ROOT/models/labscim/inis"
-> ```
->
-> Then refresh the project (F5) and they appear as `/labscim/inis/tsch/...`. The symlink is
-> local and untracked; leave it out of any commit to the model repository.
+**Config name is a read-only dropdown, not a text field** — you cannot type into it. The IDE
+fills it by parsing the ini file named in the field above, so until that field holds a valid
+ini *inside a project*, the list is empty and the control looks dead. If it stays empty after
+picking a file, the ini is not a workspace resource: go back to Step 8.
 
 The `.ini` files under `inis/` carry the firmware paths, so an IDE run executes exactly what
 `scripts/run_tsch.sh` executes. The sandbox file
@@ -181,7 +193,7 @@ For the LoRaWAN configurations the IDE does **not** run the runner's preflight c
 start ChirpStack, provision the devices, launch the MQTT responder and flush the DevNonces
 yourself — see [EXAMPLE_LoRaWAN.md](EXAMPLE_LoRaWAN.md).
 
-## Step 9: Debug the Model
+## Step 10: Debug the Model
 Click **Debug** with the `_dbg` executable selected. When asked how to debug, choose
 **OMNeT++ Simulation**, not *Local C/C++ Application* — the latter launches the binary
 without the ini file, config name and NED path:
@@ -196,7 +208,7 @@ real problem rather than an annoyance: they run on `cRealTimeScheduler` with
 not the wall clock, and the firmware processes and ChirpStack keep running. Long pauses
 desynchronise the run.
 
-## Step 10: Debug the Firmware
+## Step 11: Debug the Firmware
 The firmware runs as **separate processes**, spawned by the model through `popen()`, so the
 IDE debugger attached to the model does not see them. The model provides a hook for this:
 
