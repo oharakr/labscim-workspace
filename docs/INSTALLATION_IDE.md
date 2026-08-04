@@ -173,10 +173,34 @@ fills it by parsing the ini file named in the field above, so until that field h
 ini *inside a project*, the list is empty and the control looks dead. If it stays empty after
 picking a file, the ini is not a workspace resource: go back to Step 8.
 
-The `.ini` files under `inis/` carry the firmware paths, so an IDE run executes exactly what
-`scripts/run_tsch.sh` executes. The sandbox file
-`models/labscim/simulations/wireless/nic/labscim.ini` is the one to use for the smaller
-tutorial examples.
+### Additional arguments
+
+The campaign `.ini` files do not run on their own — `scripts/run_tsch.sh` supplies four
+arguments alongside them, and an IDE run needs the same ones. Paste this into **Additional
+arguments** on the Main tab:
+
+```
+--network=tsch.simulations.wireless.nic.LabSCimLoRaWANvsTSCH --*.radioMedium.sameTransmissionStartTimeCheck="ignore" --*.*.mobility.boundaryPolygonX=[] --*.*.mobility.boundaryPolygonY=[]
+```
+
+Without the first one the run stops at **`Network 'LabSCimLoRaWANvsTSCH' not found, check
+.ini and .ned files`**, even though the network exists and its NED file loaded. The `.ini`
+names the network by its short name, and OMNeT++ resolves a short name in the NED package of
+the directory *holding the ini* — not the working directory. `inis/` sits outside the
+project's NED folders (`simulations` and `src`, per `.nedfolders`), so it belongs to no
+package and the lookup fails. The symlink from Step 8 makes the files selectable; it does not
+put them in a package. Passing the fully qualified name sidesteps the whole question, which
+is why the runner passes it too.
+
+Without the other three, initialization dies on
+`check_and_cast(): Cannot cast (cValueHolder*)boundaryPolygonX.holder to cValueArray*`.
+
+For the other scenarios, replace the config name and keep the same arguments — every
+scenario uses this one network.
+
+The sandbox file `models/labscim/simulations/wireless/nic/labscim.ini` needs none of this: it
+lives inside the `simulations` NED folder, so its short network name resolves. It is the one
+to use for the smaller tutorial examples.
 
 ### The Environment tab
 
