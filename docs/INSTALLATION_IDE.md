@@ -127,8 +127,14 @@ outside both projects, so the picker will not offer them — it shows only
 Bring them inside the project with a symlink:
 
 ```bash
-ln -s ../../inis "$LABSCIM_WORKSPACE_ROOT/models/labscim/inis"
+cd "$LABSCIM_WORKSPACE_ROOT/models/labscim"
+ln -s ../../inis inis
 ```
+
+The link target is deliberately relative: `../../inis` is stored verbatim inside the link and
+resolved from the link's own directory, so the workspace keeps working if you move or rename
+it. That is also why the `cd` matters here — write the target as seen from
+`models/labscim/`, not from wherever you happen to be standing.
 
 Then select the `labscim` project and press **F5** to refresh. They now appear as
 `/labscim/inis/tsch/...`. The symlink is local and untracked; leave it out of any commit to
