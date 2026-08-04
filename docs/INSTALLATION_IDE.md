@@ -11,8 +11,13 @@ OMNeT++ 6.4 builds Qtenv against **Qt6**. The Qt5 packages are not a substitute:
 
 ```bash
 sudo apt install -y qt6-base-dev qt6-base-dev-tools qt6-tools-dev \
-    qt6-tools-dev-tools libwebkit2gtk-4.1-0 xdg-utils
+    qt6-tools-dev-tools libqt6svg6 libwebkit2gtk-4.1-0 xdg-utils
 ```
+
+`libqt6svg6` is not needed to build, only to avoid `SVG image format support for Qt (the
+'qsvg' plugin) is not present` at startup, which costs you Qtenv's toolbar icons and nothing
+else. A companion warning, `ignoring XDG_SESSION_TYPE=wayland on Gnome`, is Qt reporting that
+it runs through XWayland; it is informational and affects nothing.
 
 If Qt5 is already installed, `./configure` fails with `qmake: could not find a Qt
 installation of '6'` followed by `Could not find all of moc, rcc, and uic for Qt6`. That is
