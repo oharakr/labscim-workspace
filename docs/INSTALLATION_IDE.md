@@ -149,8 +149,22 @@ tab **in this order**:
 |---|---|---|
 | 1 | Executable | the `labscim` project binary (`labscim_dbg` for debugging) |
 | 2 | Ini file | **Browse…** → `/labscim/inis/tsch/labscim-tsch-20.ini` |
-| 3 | Config name | `TSCHOnly` (or `LoRaOnly`, `LoRaOnlyADR`, `LoRaWANvsTSCH`) |
-| 4 | User interface | `Qtenv` to watch it, `Cmdenv` to just get results |
+| 3 | Config name | the scenario section — `TSCHOnly` here |
+| 4 | Run number | `0` for a single run |
+| 5 | User interface | `Qtenv` to watch it, `Cmdenv` to just get results |
+
+Each campaign file holds exactly one scenario section (`TSCHOnly`, `LoRaOnly`, `LoRaOnlyADR`
+or `LoRaWANvsTSCH`), so the dropdown offers that one plus `General`. Pick the scenario:
+`General` defines no node counts and the run stops asking for them.
+
+Two labels in those files look wrong and are not. Every scenario runs on the same network,
+`LabSCimLoRaWANvsTSCH`, which hosts both node types — the section is what selects the
+scenario, by setting `numLoRaHosts` and `numContikingHosts`. And every file carries
+`description = "LoRaWANvsTSCH"`, a stale label from the original release, which is what the
+IDE shows after the `--`. Both are cosmetic; the files are kept verbatim.
+
+Leaving **Run number** empty runs the whole repetition set — the campaign sections declare
+`repeat = 8` or more.
 
 ![Select ini file and config](images/run_sim_3.png "Select Ini file and Config")
 
