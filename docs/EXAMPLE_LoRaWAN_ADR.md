@@ -22,7 +22,9 @@ and notes are in `labscim-chirpstack-docker/configuration/chirpstack/`.
 
 ### 2. Start ChirpStack
 ```bash
-cd $LABSCIM_WORKSPACE_ROOT && ./scripts/chirpstack_up.sh
+cd $LABSCIM_WORKSPACE_ROOT/labscim-chirpstack-docker
+find postgresqldata -name .gitkeep -delete   # fresh clone only, see EXAMPLE_LoRaWAN.md
+docker compose up -d
 ```
 
 The plugin ships registered — `chirpstack.toml` already has
