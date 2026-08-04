@@ -6,6 +6,23 @@ The submodules pin the exact commit of every moving part: the model, the two fir
 the gateway, and the INET fork carrying the RayleighFading revert. OMNeT++ is the only
 component not pinned here; point `OMNETPP_ROOT` at a 6.x installation.
 
+## Documentation
+
+Step-by-step guides live in [`docs/`](docs/). Start with the installation guide, then pick
+the scenario you want.
+
+| Guide | |
+|---|---|
+| [INSTALLATION.md](docs/INSTALLATION.md) | build everything from a clean clone (command line) |
+| [INSTALLATION_IDE.md](docs/INSTALLATION_IDE.md) | additional steps to work from the OMNeT++ IDE |
+| [EXAMPLE_CSMA_CONTIKI.md](docs/EXAMPLE_CSMA_CONTIKI.md) | RPL/UDP over CSMA — the smallest example |
+| [EXAMPLE_6TiSCH_CONTIKI.md](docs/EXAMPLE_6TiSCH_CONTIKI.md) | `TSCHOnly` campaign |
+| [EXAMPLE_LoRaWAN.md](docs/EXAMPLE_LoRaWAN.md) | `LoRaOnly` campaign |
+| [EXAMPLE_LoRaWAN_ADR.md](docs/EXAMPLE_LoRaWAN_ADR.md) | `LoRaOnlyADR`, modified ADR |
+| [EXAMPLE_COEXISTENCE.md](docs/EXAMPLE_COEXISTENCE.md) | `LoRaWANvsTSCH` |
+
+The rest of this file is the condensed version of those guides.
+
 ## Layout
 
 ```
@@ -120,7 +137,9 @@ LoRaWAN, necessarily serial (the real-time scheduler pins one simulated second t
 wall-clock second, so each run costs 2 h 20 min regardless of the machine):
 
 ```bash
-cd labscim-chirpstack-docker && docker compose up -d && cd ..
+cd labscim-chirpstack-docker
+find postgresqldata -name .gitkeep -delete   # fresh clone only: postgres refuses to start otherwise
+docker compose up -d && cd ..
 ./scripts/run_lora.sh -c LoRaOnly
 ./scripts/run_lora.sh -c LoRaOnlyADR
 ```
