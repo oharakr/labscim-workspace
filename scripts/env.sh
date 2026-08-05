@@ -98,8 +98,14 @@ NEDPATH="../..:../../../src:$INET_ROOT/src:$INET_ROOT/examples:$INET_ROOT/tutori
 # The binary name follows the project directory name, so it cannot be hardcoded.
 MODEL_BIN="${MODEL_BIN:-}"
 if [ -z "$MODEL_BIN" ] && [ -d "$MODEL_DIR/out" ]; then
+    # Prefer a release build. OMNeT++ suffixes the debug binary with _dbg, and with both
+    # out/gcc-release/ and out/gcc-debug/ present the plain "find | head -1" below picks
+    # between them in directory order -- which silently ran a whole campaign under _dbg.
     MODEL_BIN=$(find "$MODEL_DIR/out" -maxdepth 3 -type f -perm -u+x -name 'labscim*' \
-                     ! -name '*.so' 2>/dev/null | head -1)
+                     ! -name '*.so' ! -name '*_dbg' 2>/dev/null | head -1)
+    # Fall back to whatever exists, so a debug-only build still runs.
+    [ -n "$MODEL_BIN" ] || MODEL_BIN=$(find "$MODEL_DIR/out" -maxdepth 3 -type f -perm -u+x \
+                     -name 'labscim*' ! -name '*.so' 2>/dev/null | head -1)
 fi
 
 export LD_LIBRARY_PATH="${OMNETPP_ROOT:-}/lib:$INET_ROOT/src${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
