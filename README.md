@@ -71,7 +71,8 @@ their home directory.
 ## Setup
 
 ```bash
-git clone --recurse-submodules <this repo> labscim-workspace
+cd $HOME
+git clone --recurse-submodules https://github.com/oharakr/labscim-workspace.git
 cd labscim-workspace
 export LABSCIM_WORKSPACE_ROOT=$PWD
 export OMNETPP_ROOT=/path/to/omnetpp-6.4.0
@@ -94,7 +95,7 @@ export OMNETPP_ROOT=/path/to/omnetpp-6.4.0
 cd "$OMNETPP_ROOT" && . setenv && cd -
 
 # INET first -- the model links against libINET.so. This one takes a while.
-# Needs libcryptopp-dev and libboost-system-dev.
+# Needs libcryptopp-dev.
 cd inet && make makefiles && make -j$(nproc) && cd ..
 
 # model. Do NOT use the repository's own "make makefiles" target: it runs a bare
@@ -105,7 +106,7 @@ cd inet && make makefiles && make -j$(nproc) && cd ..
 cd models/labscim/src && opp_makemake -f --deep \
   -KINET_PROJ="$LABSCIM_WORKSPACE_ROOT/inet" -DINET_IMPORT \
   -I"$LABSCIM_WORKSPACE_ROOT/inet/src" -L"$LABSCIM_WORKSPACE_ROOT/inet/src" \
-  -lboost_system -lcryptopp -lpthread -lrt -lINET
+  -lcryptopp -lpthread -lrt -lINET
 cd .. && make -j$(nproc) && cd ../..
 
 # TSCH firmware
@@ -137,6 +138,8 @@ LoRaWAN, necessarily serial (the real-time scheduler pins one simulated second t
 wall-clock second, so each run costs 2 h 20 min regardless of the machine):
 
 ```bash
+# One-time: these commands assume the docker group, not sudo.
+#   sudo usermod -aG docker $USER && newgrp docker
 cd labscim-chirpstack-docker
 find postgresqldata -name .gitkeep -delete   # fresh clone only: postgres refuses to start otherwise
 docker compose up -d && cd ..

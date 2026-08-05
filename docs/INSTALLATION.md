@@ -38,16 +38,30 @@ On Ubuntu 24.04 `pip` refuses to write into a system-managed environment: add
 packages.
 
 ## Step 2: Install OMNeT++ 6.4.0
-Keep it **outside** the workspace, so `OMNETPP_ROOT` and `PATH` cannot drift apart:
+Download the release archive. Keep it **outside** the workspace, so `OMNETPP_ROOT` and
+`PATH` cannot drift apart:
 
 ```bash
-cd $HOME && tar xvfz ~/Downloads/omnetpp-6.4.0-linux-x86_64.tgz
+cd $HOME
+curl -LO https://github.com/omnetpp/omnetpp/releases/download/omnetpp-6.4.0/omnetpp-6.4.0-linux-x86_64.tgz
+tar xvfz omnetpp-6.4.0-linux-x86_64.tgz
 ```
+
+Take the `linux-x86_64` archive specifically. The `-core` and source distributions are
+smaller but ship no IDE, which the [IDE track](INSTALLATION_IDE.md) needs. The same file is
+also reachable from <https://omnetpp.org/download/>, which asks for a login; the release
+URL above does not.
 
 INET 4.7 requires OMNeT++ 6.4 or later, so this is a coupled upgrade — there is no
 "INET 4.7 on OMNeT++ 6.0.3" configuration.
 
-Set the compiler in `$HOME/omnetpp-6.4.0/configure.user`:
+Now **edit `$HOME/omnetpp-6.4.0/configure.user`**. The file comes inside the archive you
+just extracted and is what `./configure` reads; all five variables already exist in it, so
+change the values in place rather than appending new lines:
+
+```bash
+${EDITOR:-nano} $HOME/omnetpp-6.4.0/configure.user
+```
 
 ```bash
 PREFER_CLANG=no
@@ -91,8 +105,12 @@ ls lib | grep nedxml                       # expect both .so and _dbg.so
 ```
 
 ## Step 3: Clone the Workspace
+Clone from `$HOME`, so the workspace lands beside the OMNeT++ tree rather than inside
+whatever directory the shell happened to be in:
+
 ```bash
-git clone --recurse-submodules <workspace-repo-url> $HOME/labscim-workspace
+cd $HOME
+git clone --recurse-submodules https://github.com/oharakr/labscim-workspace.git
 cd $HOME/labscim-workspace
 export LABSCIM_WORKSPACE_ROOT=$PWD
 ```
@@ -143,7 +161,7 @@ that knows nothing about INET, and the build dies on
 cd $LABSCIM_WORKSPACE_ROOT/models/labscim/src && opp_makemake -f --deep \
   -KINET_PROJ="$LABSCIM_WORKSPACE_ROOT/inet" -DINET_IMPORT \
   -I"$LABSCIM_WORKSPACE_ROOT/inet/src" -L"$LABSCIM_WORKSPACE_ROOT/inet/src" \
-  -lboost_system -lcryptopp -lpthread -lrt -lINET
+  -lcryptopp -lpthread -lrt -lINET
 cd .. && make -j$(nproc) MODE=release
 ```
 
@@ -197,7 +215,17 @@ builds — it uses `NvmCtxMgmt`, an API dropped upstream.
 If `build/CMakeCache.txt` exists from another path, delete `build/` first: CMake stores
 absolute paths and a stale cache configures the wrong source tree.
 
-The LoRaWAN scenarios also need [Docker Engine](https://docs.docker.com/engine/install/ubuntu/).
+The LoRaWAN scenarios also need [Docker Engine](https://docs.docker.com/engine/install/ubuntu/),
+and your user has to be in the `docker` group. Every `docker compose` call in the example
+guides and in `scripts/run_lora.sh` is written without `sudo`, so without the group
+membership ChirpStack never comes up and `run_lora.sh` aborts with its "ChirpStack is not
+running" check:
+
+```bash
+sudo usermod -aG docker $USER
+newgrp docker          # this shell only; a new login picks it up everywhere
+docker ps              # must succeed without sudo
+```
 
 ## Step 8: Verify
 ```bash
